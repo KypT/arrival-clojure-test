@@ -1,19 +1,22 @@
 (ns arrival-clojure-test.handler
   (:require
-   [reitit.ring :as reitit-ring]
-   [arrival-clojure-test.middleware :refer [middleware]]
+   [compojure.core :refer :all]
+   [compojure.route :as route]
+   [compojure.handler :as handler]
    [clojure.data.json :as json]
    [hiccup.page :refer [include-js include-css html5]]
    [ring.middleware.anti-forgery :refer [*anti-forgery-token*]]
    [ring.middleware.json :refer [wrap-json-body]]
+   [ring.middleware.defaults :refer [site-defaults wrap-defaults]]
+   [prone.middleware :refer [wrap-exceptions]]
+   [ring.middleware.reload :refer [wrap-reload]]
    [config.core :refer [env]]
    [arrival-clojure-test.tickets :as tickets]))
 
 (def mount-target
   [:div#app
    [:h2 "Welcome to arrival-clojure-test"]
-   [:p "please wait while Figwheel is waking up ..."]
-   [:p "(Check the js console for hints if nothing exciting happens.)"]])
+   [:p "Loading ..."]])
 
 (defn head []
   [:head
@@ -54,19 +57,20 @@
      :headers {"Content-Type" "application/json"}
      :body (json/write-str ticket)}))
 
+(defroutes app-routes
+           (route/resources "/" {:root "/public"})
+           (GET "/" request (index-handler request))
+           (context "/tickets" []
+             (GET "/" request (index-handler request))
+             (GET "/:id" [id :as request] (index-handler request)))
+           (context "/api" []
+             (GET "/tickets" request (api-all-tickets-handler request))
+             (POST "/ticket" request (api-create-ticket-handler request)))
+           (route/not-found "<h1>Page not found</h1>"))
+
 (def app
-  (reitit-ring/ring-handler
-   (reitit-ring/router
-    [["/" {:get {:handler index-handler}}]
-     ["/items"
-      ["" {:get {:handler index-handler}}]
-      ["/:item-id" {:get {:handler index-handler
-                          :parameters {:path {:item-id int?}}}}]]
-     ["/about" {:get {:handler index-handler}}]
-     ["/api"
-      ["/tickets" {:get {:handler api-all-tickets-handler}}]
-      ["/ticket" {:post {:handler api-create-ticket-handler}}]]])
-   (reitit-ring/routes
-    (reitit-ring/create-resource-handler {:path "/" :root "/public"})
-    (reitit-ring/create-default-handler))
-   {:middleware (conj middleware #(wrap-json-body % {:keywords? true}))}))
+  (-> (handler/site app-routes)
+      (wrap-defaults site-defaults)
+      (wrap-reload)
+      (wrap-json-body {:keywords? true})
+      (wrap-exceptions)))

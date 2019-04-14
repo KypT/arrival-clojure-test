@@ -18,7 +18,11 @@
                  [org.clojure/clojurescript "1.10.520"
                   :scope "provided"]
                  [metosin/reitit "0.3.1"]
+                 [compojure "1.6.1"]
                  [pez/clerk "1.0.0"]
+                 [com.datomic/datomic-pro "0.9.5786"]
+                 [org.postgresql/postgresql "9.3-1102-jdbc41"]
+                 [com.google.guava/guava "21.0"]
                  [cljs-ajax "0.7.5"]
                  [venantius/accountant "0.2.4"
                   :exclusions [org.clojure/tools.reader]]]
@@ -103,6 +107,7 @@
              :uberjar {:hooks [minify-assets.plugin/hooks]
                        :source-paths ["env/prod/clj"]
                        :prep-tasks ["compile" ["cljsbuild" "once" "min"]]
+                       :dependencies [[prone "1.6.1"]]
                        :env {:production true}
                        :aot :all
                        :omit-source true}})

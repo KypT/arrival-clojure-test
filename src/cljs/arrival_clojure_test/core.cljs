@@ -70,27 +70,16 @@
 (def router
   (reitit/router
    [["/" :index]
-    ["/items"
-     ["" :items]
-     ["/:item-id" :item]]
-    ["/about" :about]]))
+    ["/tickets"
+     ["/:ticket-id" :ticket]]]))
 
 (defn path-for [route & [params]]
   (if params
     (:path (reitit/match-by-name router route params))
     (:path (reitit/match-by-name router route))))
 
-(path-for :about)
 ;; -------------------------
 ;; Page components
-
-(defn home-page []
-  (fn []
-    [:span.main
-     [:h1 "Welcome to arrival-clojure-test"]
-     [:ul
-      [:li [:a {:href (path-for :items)} "Items of arrival-clojure-test"]]
-      [:li [:a {:href "/borken/link"} "Borken link"]]]]))
 
 
 (defn simple-input [value type title field]
@@ -107,7 +96,7 @@
      [:textarea {:id id :value (field @value)
                  :on-change #(swap! value assoc field (-> % .-target .-value))}]]))
 
-(def new-ticket (atom {}))
+(def new-ticket (atom {:title "" :description "" :creator "" :assignee "" :deadline ""}))
 
 (defn create-new-ticket-button []
   [:div {:id "new-ticket-form"}
@@ -120,48 +109,40 @@
             :on-click #(rf/dispatch [:create-new-ticket @new-ticket])}]])
 
 
-(defn items-page []
+(defn tickets-page []
   (fn []
     [:span.main
      [:h1 "All tickets"]
      [create-new-ticket-button]
      [:ul (map (fn [ticket]
                  [:li {:name (str "Ticket id:" (:id ticket)) :key (:id ticket)}
-                  [:a {:href (path-for :item {:item-id (:id ticket)})}
+                  [:a {:href (path-for :ticket {:ticket-id (:id ticket)})}
                    (:id ticket)
                     " "
                    (or (:title ticket) "no-title")]])
                @(rf/subscribe [:get-tickets]))]]))
 
 
-(defn item-page []
+(defn ticket-page []
   (fn []
     (let [routing-data (session/get :route)
-          id (int (get-in routing-data [:route-params :item-id]))
+          id (long (get-in routing-data [:route-params :ticket-id]))
           ticket @(rf/subscribe [:get-ticket id])]
-      (println ticket)
       [:span.main
        [:h1 (:id ticket) " " (:title ticket)]
        [:div (:description ticket)]
        [:div  "Assignee: " (:assignee ticket)]
        [:div  "Creator: " (:creator ticket)]
        [:div  "Deadline: " (:deadline ticket)]
-       [:p [:a {:href (path-for :index)} "Back to the list of items"]]])))
-
-
-(defn about-page []
-  (fn [] [:span.main
-          [:h1 "About arrival-clojure-test"]]))
+       [:p [:a {:href (path-for :index)} "Back to the list of tickets"]]])))
 
 ;; -------------------------
 ;; Translate routes -> page components
 
 (defn page-for [route]
   (case route
-    :index #'items-page
-    :about #'about-page
-    :item #'item-page))
-
+    :index #'tickets-page
+    :ticket #'ticket-page))
 
 ;; -------------------------
 ;; Page mounting component
